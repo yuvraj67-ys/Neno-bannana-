@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎨 AI Background Changer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 { text-align: center; color: #667eea; margin-bottom: 10px; font-size: 28px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+    .section {
+      margin-bottom: 25px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 2px dashed #ccc;
+    }
+    .section h3 { margin-bottom: 15px; color: #555; font-size: 18px; }
+    label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+    input[type="text"], input[type="file"], textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+      margin-bottom: 10px;
+    }
+    input:focus, textarea:focus { border-color: #667eea; outline: none; }
+    textarea { min-height: 80px; resize: vertical; }
+    
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-top: 10px;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    
+    .preview { margin-top: 15px; text-align: center; }
+    .preview img { max-width: 100%; max-height: 300px; border-radius: 10px; border: 3px solid #667eea; }
+    
+    .result-area {
+      margin-top: 25px;
+      text-align: center;
+      padding: 20px;
+      background: #e8f4f8;
+      border-radius: 12px;
+      display: none;
+    }
+    .result-area.show { display: block; animation: fadeIn 0.5s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .result-area img { max-width: 100%; max-height: 400px; border-radius: 10px; margin: 15px 0; border: 3px solid #764ba2; }
+    
+    .loading { display: none; text-align: center; padding: 20px; color: #667eea; font-weight: 600; }
+    .loading.show { display: block; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .error { color: #e74c3c; background: #fdedec; padding: 12px; border-radius: 8px; margin-top: 10px; display: none; white-space: pre-wrap; }
+    .error.show { display: block; }
+    .success { color: #27ae60; background: #e8f8f0; padding: 12px; border-radius: 8px; margin-top: 10px; display: none; }
+    .success.show { display: block; }
+    
+    .api-note { font-size: 12px; color: #888; margin-top: 5px; font-style: italic; }
+    .server-status { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; font-size: 13px; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+    .status-dot.online { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+    .status-dot.offline { background: #e74c3c; }
+        .log-box {
+      background: #2d3436;
+      color: #00cec9;
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 10px;
+      display: none;
+    }
+    .log-box.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 AI Background Changer</h1>
+    <p class="subtitle">Backend Powered • No CORS Issues • Fast & Reliable</p>
+
+    <!-- Server Status -->
+    <div class="server-status">
+      <div class="status-dot" id="serverDot"></div>
+      <span id="serverText">Checking server...</span>
+      <button id="refreshStatus" style="margin-left:auto;padding:4px 12px;font-size:12px;">🔄</button>
+    </div>
+
+    <!-- Image Upload -->
+    <div class="section">
+      <h3>📤 Step 1: Upload Image</h3>
+      <label>Select Image (max 32MB):</label>
+      <input type="file" id="imageFile" accept="image/*" />
+      
+      <label>ImgBB API Key (optional):</label>
+      <input type="text" id="imgbbKey" placeholder="Uses server default if empty" value="" />
+      <p class="api-note">💡 Leave empty to use server's configured key</p>
+      
+      <button class="btn" id="uploadBtn">🚀 Upload Image</button>
+      <div class="preview" id="imagePreview"></div>
+      <input type="hidden" id="uploadedImageUrl" />
+    </div>
+
+    <!-- Prompt -->
+    <div class="section">
+      <h3>✏️ Step 2: Enter Prompt</h3>
+      <label>What change do you want?</label>
+      <textarea id="prompt" placeholder="Example: Change background with red color, make it professional..."></textarea>
+      <p class="api-note">💡 Be specific for best results!</p>
+    </div>
+    <!-- Process Button -->
+    <button class="btn" id="processBtn" disabled>✨ Generate AI Image (One-Click)</button>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p id="loadingText">Processing... 🎨</p>
+      <p style="font-size:13px;color:#888;">This may take 30-90 seconds</p>
+    </div>
+
+    <!-- Messages -->
+    <div class="error" id="errorMsg"></div>
+    <div class="success" id="successMsg"></div>
+    
+    <!-- Debug Log -->
+    <div class="log-box" id="logBox"></div>
+
+    <!-- Result -->
+    <div class="result-area" id="resultArea">
+      <h3>✅ Result Ready!</h3>
+      <img id="resultImage" src="" alt="AI Result" />
+      <br />
+      <a id="downloadLink" href="#" target="_blank" class="btn" style="display:inline-block;width:auto;padding:10px 25px;">🔗 Open Full Image</a>
+      <button class="btn" id="retryBtn" style="background:#e17055;margin-top:10px;">🔄 New Edit</button>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect backend URL
+    const API_BASE = window.location.origin;
+    
+    // DOM Elements
+    const els = {
+      serverDot: document.getElementById('serverDot'),
+      serverText: document.getElementById('serverText'),
+      imageFile: document.getElementById('imageFile'),
+      imgbbKey: document.getElementById('imgbbKey'),
+      uploadBtn: document.getElementById('uploadBtn'),
+      imagePreview: document.getElementById('imagePreview'),
+      uploadedUrl: document.getElementById('uploadedImageUrl'),
+      prompt: document.getElementById('prompt'),
+      processBtn: document.getElementById('processBtn'),
+      loading: document.getElementById('loading'),
+      loadingText: document.getElementById('loadingText'),
+      error: document.getElementById('errorMsg'),
+      success: document.getElementById('successMsg'),
+      log: document.getElementById('logBox'),
+      resultArea: document.getElementById('resultArea'),
+      resultImage: document.getElementById('resultImage'),
+      downloadLink: document.getElementById('downloadLink'),      retryBtn: document.getElementById('retryBtn'),
+      refreshStatus: document.getElementById('refreshStatus')
+    };
+
+    // Logging
+    function log(msg, type = 'info') {
+      const time = new Date().toLocaleTimeString();
+      const colors = { info: '#00cec9', success: '#55efc4', error: '#ff7675' };
+      els.log.innerHTML += `<div style="color:${colors[type]}">[${time}] ${msg}</div>\n`;
+      els.log.scrollTop = els.log.scrollHeight;
+      els.log.classList.add('show');
+    }
+
+    function showError(msg) {
+      els.error.textContent = msg;
+      els.error.classList.add('show');
+      els.success.classList.remove('show');
+      log(msg, 'error');
+    }
+    function showSuccess(msg) {
+      els.success.textContent = msg;
+      els.success.classList.add('show');
+      els.error.classList.remove('show');
+      log(msg, 'success');
+    }
+    function setLoading(isLoading, text = 'Processing...') {
+      els.loading.classList.toggle('show', isLoading);
+      els.loadingText.textContent = text;
+      els.uploadBtn.disabled = isLoading;
+      els.processBtn.disabled = isLoading;
+    }
+
+    // Check server health
+    async function checkServer() {
+      try {
+        const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          els.serverDot.className = 'status-dot online';
+          els.serverText.textContent = `✅ Server Online • ${data.uptime ? Math.floor(data.uptime)+'s uptime' : ''}`;
+          log('Server connected ✓', 'success');
+          return true;
+        }
+        throw new Error('Server returned ' + res.status);
+      } catch (e) {
+        els.serverDot.className = 'status-dot offline';
+        els.serverText.textContent = '❌ Server Offline';
+        log('Server connection failed: ' + e.message, 'error');
+        return false;
+      }    }
+
+    // Preview image
+    els.imageFile.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = ev => els.imagePreview.innerHTML = `<img src="${ev.target.result}" alt="Preview">`;
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Upload via backend
+    els.uploadBtn.addEventListener('click', async () => {
+      const file = els.imageFile.files[0];
+      if (!file) return showError('⚠️ Select an image first!');
+
+      setLoading(true, 'Uploading...');
+      els.error.classList.remove('show');
+      
+      const formData = new FormData();
+      formData.append('image', file);
+      const key = els.imgbbKey.value.trim();
+      if (key) formData.append('key', key);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/upload-imgbb`, { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        
+        els.uploadedUrl.value = data.data.url;
+        showSuccess('✅ Uploaded!');
+        log('Image URL: ' + data.data.url, 'success');
+        updateProcessBtn();
+      } catch (e) {
+        showError('❌ ' + e.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // One-click process: Upload + AI
+    els.processBtn.addEventListener('click', async () => {
+      const file = els.imageFile.files[0];
+      const prompt = els.prompt.value.trim();
+      if (!file) return showError('⚠️ Select image!');
+      if (!prompt) return showError('⚠️ Enter prompt!');
+
+      setLoading(true, '🚀 Starting AI processing...');      els.error.classList.remove('show');
+      els.resultArea.classList.remove('show');
+      els.processBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('prompt', prompt);
+        const key = els.imgbbKey.value.trim();
+        if (key) formData.append('key', key);
+
+        const res = await fetch(`${API_BASE}/api/ai/process`, { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Processing failed');
+        
+        els.resultImage.src = data.result_url;
+        els.downloadLink.href = data.result_url;
+        els.resultArea.classList.add('show');
+        showSuccess('🎉 Done!');
+        log('Result: ' + data.result_url, 'success');
+      } catch (e) {
+        showError('❌ ' + e.message + '\n\n💡 Try again or check server logs');
+      } finally {
+        setLoading(false);
+        els.processBtn.disabled = false;
+      }
+    });
+
+    function updateProcessBtn() {
+      els.processBtn.disabled = !els.uploadedUrl.value || !els.prompt.value.trim();
+    }
+    els.prompt.addEventListener('input', updateProcessBtn);
+    els.retryBtn.addEventListener('click', () => {
+      els.resultArea.classList.remove('show');
+      els.prompt.value = '';
+      els.prompt.focus();
+    });
+    els.refreshStatus.addEventListener('click', checkServer);
+
+    // Init
+    checkServer();
+    log('🎨 Ready! Backend: ' + API_BASE, 'info');
+  </script>
+</body>
+</html>
